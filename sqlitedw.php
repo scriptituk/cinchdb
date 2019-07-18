@@ -22,6 +22,7 @@ interface SQLiteDW {
 	public function insert_id();
 	public function attach($file, $name);
 	public function detach($name);
+	public function changes();
 	public function show_tables($schema);
 	public function info_view();
 	public function prune_seq();
@@ -53,8 +54,11 @@ trait SQLiteDW_common {
 	}
 
 	public function detach($name) {
-		if ($this->cell("SELECT 1 FROM pragma_database_list WHERE `name` == '$name'"))
-			$this->exec("DETACH DATABASE $name");
+		@$this->exec("DETACH DATABASE $name");
+	}
+
+	public function changes() {
+		return +$this->cell('SELECT changes()', 0);
 	}
 
 	public function show_tables($schema = 'main') { // database tables
@@ -230,7 +234,7 @@ class SQLiteDW_Sqlite3 extends Sqlite3 implements SQLiteDW {
 	*/
 
 	public function exec($query) {
-		return parent::exec($query) ? +parent::querySingle('SELECT changes()') : 0;
+		return parent::exec($query) ? parent::changes() : 0;
 	}
 
 	public function rows($query) {
@@ -330,7 +334,6 @@ function db_transact($queries) {
 
 function db_exec($query) { // use for all non-SELECTs
 	global $db;
-#error_log($query);
 	return $db->exec($query);
 }
 
@@ -372,6 +375,11 @@ function db_attach($file, $name) {
 function db_detach($name) {
 	global $db;
 	$db->detach($name);
+}
+
+function db_changes() {
+	global $db;
+	return $db->changes();
 }
 
 function db_show_tables($schema = 'main') {
